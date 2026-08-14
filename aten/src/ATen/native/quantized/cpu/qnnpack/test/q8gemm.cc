@@ -1276,6 +1276,779 @@ TEST(Q8GEMM_DQ_8x8__AARCH64_NEON, k_div_8_subtile) {
     }
   }
 }
+
+// mr=4 variant of the dynamic-quant aarch64 kernel. Uses the same nr=8 / np=8 /
+// kr=1 packing as the 8x8 kernel, so it must produce identical results for the
+// first 4 activation rows. Only m == 4 is exercised: callers dispatch on the
+// exact batch size, so the kernel has no row bounds checks.
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8) {
+  GemmMicrokernelTester().mr(4).nr(8).np(8).kr(1).m(4).n(8).k(8).test(
+      pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_strided_a) {
+  GemmMicrokernelTester()
+      .mr(4)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(4)
+      .n(8)
+      .k(8)
+      .aStride(37)
+      .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_strided_c) {
+  GemmMicrokernelTester()
+      .mr(4)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(4)
+      .n(8)
+      .k(8)
+      .cStride(17)
+      .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_qmin128) {
+  GemmMicrokernelTester().mr(4).nr(8).np(8).kr(1).m(4).n(8).k(8).qmin(128).test(
+      pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_qmax128) {
+  GemmMicrokernelTester().mr(4).nr(8).np(8).kr(1).m(4).n(8).k(8).qmax(128).test(
+      pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_azp0) {
+  GemmMicrokernelTester()
+      .mr(4)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(4)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_bzp0) {
+  GemmMicrokernelTester()
+      .mr(4)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(4)
+      .n(8)
+      .k(8)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_eq_8_nozp) {
+  GemmMicrokernelTester()
+      .mr(4)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(4)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_gt_8) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester().mr(4).nr(8).np(8).kr(1).m(4).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_gt_8_strided_a) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(4)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(4)
+        .n(8)
+        .k(k)
+        .aStride(37)
+        .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_gt_8_strided_c) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(4)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(4)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_gt_8_subtile) {
+  for (size_t k = 9; k < 16; k++) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(4)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(4)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+    }
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_div_8) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester().mr(4).nr(8).np(8).kr(1).m(4).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_div_8_strided_a) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(4)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(4)
+        .n(8)
+        .k(k)
+        .aStride(171)
+        .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_div_8_strided_c) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(4)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(4)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_4x8__AARCH64_NEON, k_div_8_subtile) {
+  for (size_t k = 16; k < 128; k += 24) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(4)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(4)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_4x8__aarch64_neon);
+    }
+  }
+}
+
+// mr=3 variant of the dynamic-quant aarch64 kernel. Uses the same nr=8 / np=8 /
+// kr=1 packing as the 8x8 kernel, so it must produce identical results for the
+// first 3 activation rows. Only m == 3 is exercised: callers dispatch on the
+// exact batch size, so the kernel has no row bounds checks.
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8) {
+  GemmMicrokernelTester().mr(3).nr(8).np(8).kr(1).m(3).n(8).k(8).test(
+      pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_strided_a) {
+  GemmMicrokernelTester()
+      .mr(3)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(3)
+      .n(8)
+      .k(8)
+      .aStride(37)
+      .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_strided_c) {
+  GemmMicrokernelTester()
+      .mr(3)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(3)
+      .n(8)
+      .k(8)
+      .cStride(17)
+      .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_qmin128) {
+  GemmMicrokernelTester().mr(3).nr(8).np(8).kr(1).m(3).n(8).k(8).qmin(128).test(
+      pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_qmax128) {
+  GemmMicrokernelTester().mr(3).nr(8).np(8).kr(1).m(3).n(8).k(8).qmax(128).test(
+      pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_azp0) {
+  GemmMicrokernelTester()
+      .mr(3)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(3)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_bzp0) {
+  GemmMicrokernelTester()
+      .mr(3)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(3)
+      .n(8)
+      .k(8)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_eq_8_nozp) {
+  GemmMicrokernelTester()
+      .mr(3)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(3)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_gt_8) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester().mr(3).nr(8).np(8).kr(1).m(3).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_gt_8_strided_a) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(3)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(3)
+        .n(8)
+        .k(k)
+        .aStride(37)
+        .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_gt_8_strided_c) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(3)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(3)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_gt_8_subtile) {
+  for (size_t k = 9; k < 16; k++) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(3)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(3)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+    }
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_div_8) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester().mr(3).nr(8).np(8).kr(1).m(3).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_div_8_strided_a) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(3)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(3)
+        .n(8)
+        .k(k)
+        .aStride(171)
+        .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_div_8_strided_c) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(3)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(3)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_3x8__AARCH64_NEON, k_div_8_subtile) {
+  for (size_t k = 16; k < 128; k += 24) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(3)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(3)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_3x8__aarch64_neon);
+    }
+  }
+}
+
+// mr=2 variant of the dynamic-quant aarch64 kernel. Uses the same nr=8 / np=8 /
+// kr=1 packing as the 8x8 kernel, so it must produce identical results for the
+// first 2 activation rows. Only m == 2 is exercised: callers dispatch on the
+// exact batch size, so the kernel has no row bounds checks.
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8) {
+  GemmMicrokernelTester().mr(2).nr(8).np(8).kr(1).m(2).n(8).k(8).test(
+      pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_strided_a) {
+  GemmMicrokernelTester()
+      .mr(2)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(2)
+      .n(8)
+      .k(8)
+      .aStride(37)
+      .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_strided_c) {
+  GemmMicrokernelTester()
+      .mr(2)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(2)
+      .n(8)
+      .k(8)
+      .cStride(17)
+      .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_qmin128) {
+  GemmMicrokernelTester().mr(2).nr(8).np(8).kr(1).m(2).n(8).k(8).qmin(128).test(
+      pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_qmax128) {
+  GemmMicrokernelTester().mr(2).nr(8).np(8).kr(1).m(2).n(8).k(8).qmax(128).test(
+      pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_azp0) {
+  GemmMicrokernelTester()
+      .mr(2)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(2)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_bzp0) {
+  GemmMicrokernelTester()
+      .mr(2)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(2)
+      .n(8)
+      .k(8)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_eq_8_nozp) {
+  GemmMicrokernelTester()
+      .mr(2)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(2)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_gt_8) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester().mr(2).nr(8).np(8).kr(1).m(2).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_gt_8_strided_a) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(2)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(2)
+        .n(8)
+        .k(k)
+        .aStride(37)
+        .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_gt_8_strided_c) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(2)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(2)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_gt_8_subtile) {
+  for (size_t k = 9; k < 16; k++) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(2)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(2)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+    }
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_div_8) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester().mr(2).nr(8).np(8).kr(1).m(2).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_div_8_strided_a) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(2)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(2)
+        .n(8)
+        .k(k)
+        .aStride(171)
+        .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_div_8_strided_c) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(2)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(2)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_2x8__AARCH64_NEON, k_div_8_subtile) {
+  for (size_t k = 16; k < 128; k += 24) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(2)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(2)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_2x8__aarch64_neon);
+    }
+  }
+}
+
+// mr=1 variant of the dynamic-quant aarch64 kernel. Uses the same nr=8 / np=8 /
+// kr=1 packing as the 8x8 kernel, so it must produce identical results for the
+// first 1 activation rows. Only m == 1 is exercised: callers dispatch on the
+// exact batch size, so the kernel has no row bounds checks.
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8) {
+  GemmMicrokernelTester().mr(1).nr(8).np(8).kr(1).m(1).n(8).k(8).test(
+      pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_strided_a) {
+  GemmMicrokernelTester()
+      .mr(1)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(1)
+      .n(8)
+      .k(8)
+      .aStride(37)
+      .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_strided_c) {
+  GemmMicrokernelTester()
+      .mr(1)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(1)
+      .n(8)
+      .k(8)
+      .cStride(17)
+      .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_qmin128) {
+  GemmMicrokernelTester().mr(1).nr(8).np(8).kr(1).m(1).n(8).k(8).qmin(128).test(
+      pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_qmax128) {
+  GemmMicrokernelTester().mr(1).nr(8).np(8).kr(1).m(1).n(8).k(8).qmax(128).test(
+      pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_azp0) {
+  GemmMicrokernelTester()
+      .mr(1)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(1)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_bzp0) {
+  GemmMicrokernelTester()
+      .mr(1)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(1)
+      .n(8)
+      .k(8)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_eq_8_nozp) {
+  GemmMicrokernelTester()
+      .mr(1)
+      .nr(8)
+      .np(8)
+      .kr(1)
+      .m(1)
+      .n(8)
+      .k(8)
+      .aZeroPoint(0)
+      .bZeroPoint(0)
+      .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_gt_8) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester().mr(1).nr(8).np(8).kr(1).m(1).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_gt_8_strided_a) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(1)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(1)
+        .n(8)
+        .k(k)
+        .aStride(37)
+        .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_gt_8_strided_c) {
+  for (size_t k = 9; k < 16; k++) {
+    GemmMicrokernelTester()
+        .mr(1)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(1)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_gt_8_subtile) {
+  for (size_t k = 9; k < 16; k++) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(1)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(1)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+    }
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_div_8) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester().mr(1).nr(8).np(8).kr(1).m(1).n(8).k(k).test(
+        pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_div_8_strided_a) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(1)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(1)
+        .n(8)
+        .k(k)
+        .aStride(171)
+        .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_div_8_strided_c) {
+  for (size_t k = 16; k < 128; k += 8) {
+    GemmMicrokernelTester()
+        .mr(1)
+        .nr(8)
+        .np(8)
+        .kr(1)
+        .m(1)
+        .n(8)
+        .k(k)
+        .cStride(17)
+        .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+  }
+}
+
+TEST(Q8GEMM_DQ_1x8__AARCH64_NEON, k_div_8_subtile) {
+  for (size_t k = 16; k < 128; k += 24) {
+    for (uint32_t n = 1; n <= 8; n++) {
+      GemmMicrokernelTester()
+          .mr(1)
+          .nr(8)
+          .np(8)
+          .kr(1)
+          .m(1)
+          .n(n)
+          .k(k)
+          .iterations(3)
+          .test(pytorch_q8gemm_dq_ukernel_1x8__aarch64_neon);
+    }
+  }
+}
+
 #endif
 
 #if CPUINFO_ARCH_ARM || CPUINFO_ARCH_ARM64
