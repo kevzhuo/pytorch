@@ -105,6 +105,9 @@ class TunableOp {
             }
             if (ctx->IsWildcardFallbackEnabled()) {
               result = mgr.LookupWildcardFallback(op_sig, concrete_sig);
+              if (result != ResultEntry::Null()) {
+                params->validate_solution = true;
+              }
             }
           }
         }
@@ -128,7 +131,23 @@ class TunableOp {
         op = GetOp(result.GetKey());
       }
       TORCH_CHECK(op != nullptr);
-      return op->Call(params);
+      // For a wildcard-served shape this is where the backend re-checks that
+      // the reused solution is valid for the new concrete dims.
+      //
+      // Every non-OK status a Callable can return is decided before the kernel
+      // is enqueued -- the TF32/rocBLAS guards and the solution/algo
+      // compatibility checks all return early, and a failed
+      // hipblasLtMatmul/rocblas_gemm_ex launch throws or reports an argument
+      // rejection rather than partially writing C. Callers rely on that: they
+      // re-dispatch the non-tunable kernel on false, which would double-apply
+      // beta if the output had already been touched.
+      auto status = op->Call(params);
+      if (status != OK) {
+        TORCH_WARN(
+            "TunableOp kernel returned status ", status,
+            "; falling back to the non-tunable kernel");
+      }
+      return status;
     }
 
     virtual std::string Signature() {
@@ -519,6 +538,11 @@ struct OpParams {
   // a DynamicSignature() byte-identical to Signature() and preserves the
   // legacy concrete-only behavior for callers that don't push a guard.
   DynamicDimsMask dynamic_dims_mask{};
+
+  // Wildcard dispatch may reuse a backend solution with a new concrete shape.
+  // Backends without an unconditional compatibility check use this to request
+  // validation before launching the kernel.
+  mutable bool validate_solution{false};
 
   bool IsDynamicM() const { return dynamic_dims_mask.m(); }
   bool IsDynamicN() const { return dynamic_dims_mask.n(); }
