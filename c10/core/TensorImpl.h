@@ -277,6 +277,15 @@ struct C10_API FakeTensorMode {
   // drop constant tracking for fake tensors aliasing this mutated storage
   void invalidate_constant_aliases(c10::StorageImpl* storage_impl);
 
+  // A fake tensor needs to be able to hand back its mode (ie t.fake_mode) on
+  // the python side so we need a reference to the python CppFakeTensorMode
+  // object. We need a weak ref on the C++ FakeTensorMode object because
+  // otherwise we will have a cycle, but we still need a strong ref somewhere so
+  // that we don't lose the ref. So each fake tensor should hold onto a strong
+  // ref of the python CppFakeTensorMode object through
+  // ExtraMeta::fake_mode_pyobj_.
+  std::shared_ptr<c10::SafePyObject> cache_pyobj_cpp_fake_mode();
+
   // key = constant storage, values = all fake tensors that share this storage
   // (aliases)
   std::unordered_map<
@@ -286,6 +295,10 @@ struct C10_API FakeTensorMode {
   // protects constant_storage_mapping_ and the ExtraMeta::fake_constant_ fields
   // it indexes
   mutable std::mutex constant_mutex_;
+
+  // cache for cache_pyobj_cpp_fake_mode()
+  std::weak_ptr<c10::SafePyObject> pyobj_cpp_fake_mode_;
+  std::mutex pyobj_cpp_fake_mode_mutex_;
 };
 
 struct C10_API ExtraMeta {
@@ -295,6 +308,8 @@ struct C10_API ExtraMeta {
   std::optional<std::string> custom_storage_error_msg_ = std::nullopt;
   std::optional<c10::Device> fake_device_ = std::nullopt;
   std::shared_ptr<FakeTensorMode> fake_tensor_mode_ = nullptr;
+  // Python object for the cpp fake tensor mode.
+  std::shared_ptr<c10::SafePyObject> fake_mode_pyobj_ = nullptr;
   // The real tensor this fake shadows, when propagate_real_tensors is on.
   c10::intrusive_ptr<c10::TensorImpl> real_tensor_ = nullptr;
   // The real constant this fake was created from (via
@@ -315,6 +330,7 @@ struct C10_API ExtraMeta {
     custom_storage_error_msg_ = other.custom_storage_error_msg_;
     fake_device_ = other.fake_device_;
     fake_tensor_mode_ = other.fake_tensor_mode_;
+    fake_mode_pyobj_ = other.fake_mode_pyobj_;
   }
   ExtraMeta& operator=(const ExtraMeta& other) = delete;
   ExtraMeta(ExtraMeta&& other) = delete;
@@ -1516,7 +1532,10 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
   }
 
   void set_fake_tensor_mode(std::shared_ptr<FakeTensorMode> mode) {
-    get_extra_meta().fake_tensor_mode_ = std::move(mode);
+    auto& extra_meta = get_extra_meta();
+    extra_meta.fake_mode_pyobj_ =
+        mode ? mode->cache_pyobj_cpp_fake_mode() : nullptr;
+    extra_meta.fake_tensor_mode_ = std::move(mode);
   }
 
   std::shared_ptr<FakeTensorMode> fake_tensor_mode() const {
